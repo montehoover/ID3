@@ -19,34 +19,24 @@ class AttributeMap():
         self.possible_values.pop(attribute, None)
 
 
-class Branch():
-    def __init__(self, decision_value):
-        self.decision_value = decision_value
-        self.sub_tree = None
-
-    def pretty_print(self):
-        print('|')
-        print(self.decision_value)
-        print('|')
-        if self.sub_tree: self.sub_tree.pretty_print()
-
-
 class DecisionTreeNode():
-    def __init__(self):
+    def __init__(self, branch_value_from_parent):
+        self.branch_value = branch_value_from_parent
         self.decision_attribute = None
         self.label = None
-        self.branches = []
+        self.children = []
 
     def pretty_print(self):
-        if len(self.branches) == 0:
-            print('# ', self.label, ' #')
+        print('|')
+        print(self.branch_value)
+        print('|')
+        if len(self.children) == 0:
+            print('#', self.label, '#')
         else:
-            print('* ', self.decision_attribute, ' *')
-            for i, branch in enumerate(self.branches):
+            print('*', self.decision_attribute, '*')
+            for i, child in enumerate(self.children):
                 print("Branch", i, ":")
-                branch.pretty_print()
-
-
+                child.pretty_print()
 
 
 def calculate_gain_ratio(attribute, examples):
@@ -71,19 +61,22 @@ def choose_best_attribute(attributes, examples):
 def split_by_attribute(decision_attribute, attributes, examples):
     # Divide the examples into subsets that correspond the each of the possible
     # values for the decision_attribute.
-    # We retun a list of subsets (one for each possible value), where each subset
-    # is represented by a two-item tuple. The first item is the value, and the
-    # second item is the list of examples that correspond to that value.
-    return [(value, [e for e in examples if e.attributes[decision_attribute] == value])
+    # We return a list of subsets (one for each possible value), where each
+    # subset is represented by a two-item tuple. The first item is the value,
+    # and the second item is the list of examples that correspond to that
+    # value.
+    return [(value, [e for e in examples
+                     if e.attributes[decision_attribute] == value])
             for value in attributes.possible_values[decision_attribute]]
 
 
-def id3(examples, attributes):
-    root = DecisionTreeNode()
+def id3(examples, attributes, branch_value=None):
+    root = DecisionTreeNode(branch_value)
 
     # Validate input:
     if examples == None or len(examples) == 0 or attributes == None:
-        print("Error: bad value passed. <examples>:", examples, "<attributes>:", attributes)
+        print("Error: bad value passed. <examples>:",
+              examples, "<attributes>:", attributes)
         return None
 
     # Gather number of positive and negative examples for Base case 1 and
@@ -124,19 +117,20 @@ def id3(examples, attributes):
     root.decision_attribute = a
     new_subsets = split_by_attribute(a, attributes, examples)
     print(new_subsets)
-    # Each subset is a tuple of decision_value and examples with that decidsion
+    # Each subset is a tuple of decision_value and examples with that decision
     # value
     for i, subset in enumerate(new_subsets):
-        root.branches.append(Branch(subset[0]))
+        # Create a placeholder for each new branch
+        root.children.append(None)
         # If there weren't any examples for this branch (no info to test
         # against) then just give the most_common_value as a default, else
         # build a new tree based on this subset of examples
         if len(subset[1]) == 0:
-            root.branches[i].sub_tree = DecisionTreeNode()
-            root.branches[i].sub_tree.label = most_common_value
+            root.children[i] = DecisionTreeNode(subset[0])
+            root.children[i].label = most_common_value
         else:
             attributes.remove(a)
-            root.branches[i].sub_tree = id3(subset[1], attributes)
+            root.children[i] = id3(subset[1], attributes, subset[0])
 
     return root
 
