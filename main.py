@@ -41,9 +41,38 @@ class DecisionTreeNode():
                 child.pretty_print()
 
 
-def entropy(pos_examples, neg_examples):
-    pos_probability = pos_examples/(pos_examples+neg_examples)
-    neg_probability = neg_examples/(pos_examples+neg_examples)
+# def entropy_by_numbers(pos_examples, neg_examples):
+#     pos_probability = pos_examples/(pos_examples+neg_examples)
+#     neg_probability = neg_examples/(pos_examples+neg_examples)
+#     if pos_probability == 0 or neg_probability == 0:
+#         return 0
+#     else:
+#         return (-pos_probability*log2(pos_probability)
+#                 - neg_probability*log2(neg_probability))
+
+
+def probability(examples, target):
+    if examples == None or len(examples) == 0:
+        raise Exception("Error: Invalid argument for <examples>:", examples)
+
+    num_positive_examples = 0
+    num_negagive_examples = 0
+    for e in examples:
+        if e.target_concept == True:
+            num_positive_examples += 1
+        else:
+            num_negagive_examples += 1
+
+    total = num_positive_examples + num_negagive_examples
+    if target == True:
+        return num_positive_examples/total
+    elif target == False:
+        return num_negagive_examples/total
+
+
+def entropy(examples):
+    pos_probability = probability(examples, True)
+    neg_probability = probability(examples, False)
     if pos_probability == 0 or neg_probability == 0:
         return 0
     else:
@@ -51,7 +80,19 @@ def entropy(pos_examples, neg_examples):
                 - neg_probability*log2(neg_probability))
 
 
-def calculate_gain_ratio(attribute, examples):
+def information_gain(examples, all_attributes, attribute):
+    subsets = split_by_attribute(examples, all_attributes, attribute)
+
+    new_entropy = 0
+    # Each subset is represented by a tuple where we just care about the second term (the actual list)
+    for subset in subsets:
+        new_entropy += len(subset[1])/len(examples) * entropy(subset[1])
+
+    return entropy(examples) - new_entropy
+
+
+
+def calculate_gain_ratio(examples, attribute):
     # TODO: fill in
     # entropy = 1.0
     # information_gain = None
@@ -60,7 +101,7 @@ def calculate_gain_ratio(attribute, examples):
     return 1
 
 
-def choose_best_attribute(attributes, examples):
+def choose_best_attribute(examples, attributes):
     attribute_gainratios = []
     for a in attributes.possible_values:
         gain_ratio = calculate_gain_ratio(a, examples)
@@ -70,7 +111,7 @@ def choose_best_attribute(attributes, examples):
     return max(attribute_gainratios)[1]
 
 
-def split_by_attribute(decision_attribute, attributes, examples):
+def split_by_attribute(examples, attributes, decision_attribute):
     # Divide the examples into subsets that correspond the each of the possible
     # values for the decision_attribute.
     # We return a list of subsets (one for each possible value), where each
@@ -87,22 +128,16 @@ def id3(examples, attributes, branch_value=None):
 
     # Validate input:
     if examples == None or len(examples) == 0 or attributes == None:
-        print("Error: bad value passed. <examples>:",
-              examples, "<attributes>:", attributes)
-        return None
+        raise Exception("Error: bad value passed. <examples>:",
+                        examples, "<attributes>:", attributes)
 
-    # Gather number of positive and negative examples for Base case 1 and
+    # Gather positive and negative probabilities for Base case 1 and
     # future use:
-    num_positive_examples = 0
-    num_negagive_examples = 0
     most_common_value = None
-    for e in examples:
-        if e.target_concept == True:
-            num_positive_examples += 1
-        else:
-            num_negagive_examples += 1
+    pos_probability = probability(examples, True)
+    neg_probability = probability(examples, False)
     # (we bias to positive when split 50/50)
-    if num_positive_examples >= num_positive_examples:
+    if pos_probability >= neg_probability:
         most_common_value = True
     else:
         most_common_value = False
@@ -110,11 +145,11 @@ def id3(examples, attributes, branch_value=None):
     # Base case 1:
     # If all examples are either positive or negative then assign that value to
     # the label
-    if num_positive_examples == 0:
-        root.label = False  # Negavite
-        return root
-    if num_negagive_examples == 0:
+    if pos_probability == 1.0:
         root.label = True  # Positive
+        return root
+    if neg_probability == 1.0:
+        root.label = False  # Negative
         return root
 
     # Base case 2:
@@ -125,9 +160,9 @@ def id3(examples, attributes, branch_value=None):
         return root
 
     # Recursive case:
-    a = choose_best_attribute(attributes, examples)
+    a = choose_best_attribute(examples, attributes)
     root.decision_attribute = a
-    new_subsets = split_by_attribute(a, attributes, examples)
+    new_subsets = split_by_attribute(examples, attributes, a)
     print(new_subsets)
     # Each subset is a tuple of decision_value and examples with that decision
     # value
@@ -172,10 +207,14 @@ def main():
 
     examples = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14]
 
+    print(information_gain(examples, attributes, 'wind'))
+
     t = id3(examples, attributes)
     if t: t.pretty_print()
 
-    print(entropy(6000,1))
+    # print(entropy_by_numbers(9,5))
+    # print(entropy(examples))
+
 
 
 if __name__ == '__main__':
