@@ -1,4 +1,6 @@
 # ID3 algorithm for learning a decision tree for a target concept
+from math import log2
+
 
 class TennisExample():
     def __init__(self, outlook, temperature, humidity, wind, play_tennis):
@@ -37,6 +39,16 @@ class DecisionTreeNode():
             for i, child in enumerate(self.children):
                 print("Branch", i, ":")
                 child.pretty_print()
+
+
+def entropy(pos_examples, neg_examples):
+    pos_probability = pos_examples/(pos_examples+neg_examples)
+    neg_probability = neg_examples/(pos_examples+neg_examples)
+    if pos_probability == 0 or neg_probability == 0:
+        return 0
+    else:
+        return (-pos_probability*log2(pos_probability)
+                - neg_probability*log2(neg_probability))
 
 
 def calculate_gain_ratio(attribute, examples):
@@ -162,6 +174,8 @@ def main():
 
     t = id3(examples, attributes)
     if t: t.pretty_print()
+
+    print(entropy(6000,1))
 
 
 if __name__ == '__main__':
