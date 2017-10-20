@@ -1,4 +1,5 @@
 # ID3 algorithm for learning a decision tree for a target concept
+import copy
 from math import log2
 
 
@@ -106,24 +107,23 @@ def calculate_gain_ratio(examples, attributes, attribute):
 
 def choose_best_attribute(examples, attributes):
     attribute_gainratios = []
-    for a in attributes.possible_values:
+    for a in attributes:
         gain_ratio = calculate_gain_ratio(examples, attributes, a)
         attribute_gainratios.append((gain_ratio, a))
     # The attribute with best gain ratio:
-    print(attribute_gainratios)
     return max(attribute_gainratios)[1]
 
 
+# Divide the examples into subsets that correspond the each of the possible
+# values for the decision_attribute.
+# We return a list of subsets (one for each possible value), where each
+# subset is represented by a two-item tuple. The first item is the value,
+# and the second item is the list of examples that correspond to that
+# value.
 def split_by_attribute(examples, attributes, decision_attribute):
-    # Divide the examples into subsets that correspond the each of the possible
-    # values for the decision_attribute.
-    # We return a list of subsets (one for each possible value), where each
-    # subset is represented by a two-item tuple. The first item is the value,
-    # and the second item is the list of examples that correspond to that
-    # value.
     return [(value, [e for e in examples
                      if e.attributes[decision_attribute] == value])
-            for value in attributes.possible_values[decision_attribute]]
+            for value in attributes[decision_attribute]]
 
 
 def id3(examples, attributes, branch_value=None):
@@ -158,15 +158,17 @@ def id3(examples, attributes, branch_value=None):
     # Base case 2:
     # If we are out of attributes to test on then assign the label the value of
     # the most common value in examples
-    if len(attributes.possible_values) == 0:
+    if len(attributes) == 0:
         root.label = most_common_value
         return root
 
     # Recursive case:
     a = choose_best_attribute(examples, attributes)
+    attributes_copy = copy.deepcopy(attributes)
+    attributes_copy.pop(a, None)
     root.decision_attribute = a
+
     new_subsets = split_by_attribute(examples, attributes, a)
-    print(new_subsets)
     # Each subset is a tuple of decision_value and examples with that decision
     # value
     for i, subset in enumerate(new_subsets):
@@ -179,8 +181,7 @@ def id3(examples, attributes, branch_value=None):
             root.children[i] = DecisionTreeNode(subset[0])
             root.children[i].label = most_common_value
         else:
-            attributes.remove(a)
-            root.children[i] = id3(subset[1], attributes, subset[0])
+            root.children[i] = id3(subset[1], attributes_copy, subset[0])
 
     return root
 
@@ -210,13 +211,13 @@ def main():
     d13 = TennisExample('overcast', 'hot', 'normal', 'weak', 13, True)
     d14 = TennisExample('rain', 'mild', 'high', 'strong', 14, False)
 
-    attributes = AttributeMap({
+    attributes = {
         'outlook': ['sunny', 'overcast', 'rain'],
         'temperature': ['hot', 'mild', 'cool'],
         'humidity': ['high', 'normal'],
         'wind': ['weak', 'strong'],
         'id': [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
-    })
+    }
 
     examples = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14]
 
