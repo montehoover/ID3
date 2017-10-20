@@ -80,31 +80,33 @@ def entropy(examples):
                 - neg_probability*log2(neg_probability))
 
 
-def information_gain(examples, all_attributes, attribute):
-    subsets = split_by_attribute(examples, all_attributes, attribute)
+def information_gain(examples, attributes, attribute):
+    subsets = split_by_attribute(examples, attributes, attribute)
 
     new_entropy = 0
-    # Each subset is represented by a tuple where we just care about the second term (the actual list)
+    # Each subset is represented by a tuple where we just care about the second
+    # term (the actual list)
     for subset in subsets:
-        new_entropy += len(subset[1])/len(examples) * entropy(subset[1])
+        if len(subset[1]) != 0:
+            new_entropy += len(subset[1])/len(examples) * entropy(subset[1])
 
     return entropy(examples) - new_entropy
 
 
 
-def calculate_gain_ratio(examples, attribute):
+def calculate_gain_ratio(examples, attributes, attribute):
     # TODO: fill in
     # entropy = 1.0
     # information_gain = None
     # distinct_examples = None
     # return information_gain / distinct_examples
-    return 1
+    return information_gain(examples, attributes, attribute)
 
 
 def choose_best_attribute(examples, attributes):
     attribute_gainratios = []
     for a in attributes.possible_values:
-        gain_ratio = calculate_gain_ratio(a, examples)
+        gain_ratio = calculate_gain_ratio(examples, attributes, a)
         attribute_gainratios.append((gain_ratio, a))
     # The attribute with best gain ratio:
     print(attribute_gainratios)
@@ -207,13 +209,14 @@ def main():
 
     examples = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14]
 
-    print(information_gain(examples, attributes, 'wind'))
+    # print(information_gain(examples, attributes, 'wind'))
+    # print(entropy_by_numbers(9,5))
+    # print(entropy(examples))
 
     t = id3(examples, attributes)
     if t: t.pretty_print()
 
-    # print(entropy_by_numbers(9,5))
-    # print(entropy(examples))
+
 
 
 
