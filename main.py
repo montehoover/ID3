@@ -3,12 +3,13 @@ from math import log2
 
 
 class TennisExample():
-    def __init__(self, outlook, temperature, humidity, wind, play_tennis):
+    def __init__(self, outlook, temperature, humidity, wind, id, play_tennis):
         self.attributes = {
             'outlook': outlook,
             'temperature': temperature,
             'humidity': humidity,
-            'wind': wind
+            'wind': wind,
+            'id': id
         }
         self.target_concept = play_tennis
 
@@ -93,14 +94,14 @@ def information_gain(examples, attributes, attribute):
     return entropy(examples) - new_entropy
 
 
+def split_information(examples, attributes, attribute):
+    # TODO: complete
+    return 1
+
 
 def calculate_gain_ratio(examples, attributes, attribute):
-    # TODO: fill in
-    # entropy = 1.0
-    # information_gain = None
-    # distinct_examples = None
-    # return information_gain / distinct_examples
-    return information_gain(examples, attributes, attribute)
+    return (information_gain(examples, attributes, attribute)
+            / split_information(examples, attributes, attribute))
 
 
 def choose_best_attribute(examples, attributes):
@@ -184,27 +185,37 @@ def id3(examples, attributes, branch_value=None):
     return root
 
 
+def predict(tree, example):
+    if len(tree.children) == 0:
+        return tree.label
+    else:
+        for child in tree.children:
+            if example.attributes[tree.decision_attribute] == child.branch_value:
+                return predict(child, example)
+
+
 def main():
-    d1 = TennisExample('sunny', 'hot', 'high', 'weak', False)
-    d2 = TennisExample('sunny', 'hot', 'high', 'strong', False)
-    d3 = TennisExample('overcast', 'hot', 'high', 'weak', True)
-    d4 = TennisExample('rain', 'mild', 'high', 'weak', True)
-    d5 = TennisExample('rain', 'cool', 'normal', 'weak', True)
-    d6 = TennisExample('rain', 'cool', 'normal', 'strong', False)
-    d7 = TennisExample('overcast', 'cool', 'normal', 'strong', True)
-    d8 = TennisExample('sunny', 'mild', 'high', 'weak', False)
-    d9 = TennisExample('sunny', 'cool', 'normal', 'weak', True)
-    d10 = TennisExample('rain', 'mild', 'normal', 'weak', True)
-    d11 = TennisExample('sunny', 'mild', 'normal', 'strong', True)
-    d12 = TennisExample('overcast', 'mild', 'high', 'strong', True)
-    d13 = TennisExample('overcast', 'hot', 'normal', 'weak', True)
-    d14 = TennisExample('rain', 'mild', 'high', 'strong', False)
+    d1 = TennisExample('sunny', 'hot', 'high', 'weak', 1, False)
+    d2 = TennisExample('sunny', 'hot', 'high', 'strong', 2, False)
+    d3 = TennisExample('overcast', 'hot', 'high', 'weak', 3, True)
+    d4 = TennisExample('rain', 'mild', 'high', 'weak', 4, True)
+    d5 = TennisExample('rain', 'cool', 'normal', 'weak', 5, True)
+    d6 = TennisExample('rain', 'cool', 'normal', 'strong', 6, False)
+    d7 = TennisExample('overcast', 'cool', 'normal', 'strong', 7, True)
+    d8 = TennisExample('sunny', 'mild', 'high', 'weak', 8, False)
+    d9 = TennisExample('sunny', 'cool', 'normal', 'weak', 9, True)
+    d10 = TennisExample('rain', 'mild', 'normal', 'weak', 10, True)
+    d11 = TennisExample('sunny', 'mild', 'normal', 'strong', 11, True)
+    d12 = TennisExample('overcast', 'mild', 'high', 'strong', 12, True)
+    d13 = TennisExample('overcast', 'hot', 'normal', 'weak', 13, True)
+    d14 = TennisExample('rain', 'mild', 'high', 'strong', 14, False)
 
     attributes = AttributeMap({
         'outlook': ['sunny', 'overcast', 'rain'],
         'temperature': ['hot', 'mild', 'cool'],
         'humidity': ['high', 'normal'],
-        'wind': ['weak', 'strong']
+        'wind': ['weak', 'strong'],
+        'id': [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
     })
 
     examples = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14]
@@ -215,6 +226,9 @@ def main():
 
     t = id3(examples, attributes)
     if t: t.pretty_print()
+
+    for e in examples:
+        print(predict(t, e))
 
 
 
