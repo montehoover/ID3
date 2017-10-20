@@ -96,13 +96,19 @@ def information_gain(examples, attributes, attribute):
 
 
 def split_information(examples, attributes, attribute):
-    # TODO: complete
-    return 1
+    subsets = split_by_attribute(examples, attributes, attribute)
+    sum = 0
+    for subset in subsets:
+        if len(subset[1]) != 0:
+            sum += len(subset[1])/len(examples) * log2(len(subset[1])/len(examples))
+    return -sum
 
 
 def calculate_gain_ratio(examples, attributes, attribute):
-    return (information_gain(examples, attributes, attribute)
-            / split_information(examples, attributes, attribute))
+    split_val = split_information(examples, attributes, attribute)
+    if split_val == 0:
+        split_val = 0.01
+    return information_gain(examples, attributes, attribute) / split_val
 
 
 def choose_best_attribute(examples, attributes):
@@ -203,27 +209,23 @@ def main():
     d5 = TennisExample('rain', 'cool', 'normal', 'weak', 5, True)
     d6 = TennisExample('rain', 'cool', 'normal', 'strong', 6, False)
     d7 = TennisExample('overcast', 'cool', 'normal', 'strong', 7, True)
-    d8 = TennisExample('sunny', 'mild', 'high', 'weak', 8, False)
-    d9 = TennisExample('sunny', 'cool', 'normal', 'weak', 9, True)
-    d10 = TennisExample('rain', 'mild', 'normal', 'weak', 10, True)
-    d11 = TennisExample('sunny', 'mild', 'normal', 'strong', 11, True)
-    d12 = TennisExample('overcast', 'mild', 'high', 'strong', 12, True)
-    d13 = TennisExample('overcast', 'hot', 'normal', 'weak', 13, True)
-    d14 = TennisExample('rain', 'mild', 'high', 'strong', 14, False)
+    d8 = TennisExample('sunny', 'mild', 'high', 'weak', 1, False)
+    d9 = TennisExample('sunny', 'cool', 'normal', 'weak', 2, True)
+    d10 = TennisExample('rain', 'mild', 'normal', 'weak', 3, True)
+    d11 = TennisExample('sunny', 'mild', 'normal', 'strong', 4, True)
+    d12 = TennisExample('overcast', 'mild', 'high', 'strong', 5, True)
+    d13 = TennisExample('overcast', 'hot', 'normal', 'weak', 6, True)
+    d14 = TennisExample('rain', 'mild', 'high', 'strong', 7, False)
 
     attributes = {
         'outlook': ['sunny', 'overcast', 'rain'],
         'temperature': ['hot', 'mild', 'cool'],
         'humidity': ['high', 'normal'],
         'wind': ['weak', 'strong'],
-        'id': [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
+        'id': [1,2,3,4,5,6,7]
     }
 
     examples = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14]
-
-    # print(information_gain(examples, attributes, 'wind'))
-    # print(entropy_by_numbers(9,5))
-    # print(entropy(examples))
 
     t = id3(examples, attributes)
     if t: t.pretty_print()
@@ -231,7 +233,11 @@ def main():
     for e in examples:
         print(predict(t, e))
 
-
+    # print(information_gain(examples, attributes, 'wind'))
+    # print(entropy_by_numbers(9,5))
+    # print(entropy(examples))
+    print(split_information(examples, attributes, 'id'))
+    print(split_information(examples, attributes, 'wind'))
 
 
 
