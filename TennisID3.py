@@ -3,7 +3,9 @@ import copy
 from math import log2
 from random import random
 
-import arff
+
+
+
 
 
 class TennisExample():
@@ -16,7 +18,7 @@ class TennisExample():
             'id': id,
             'region': region
         }
-        self.class_value = play_tennis
+        self.target_concept = play_tennis
 
 
 class DecisionTreeNode():
@@ -46,21 +48,21 @@ def probability(examples, target):
     num_positive_examples = 0
     num_negagive_examples = 0
     for e in examples:
-        if e.class_value == 'True':
+        if e.target_concept == True:
             num_positive_examples += 1
         else:
             num_negagive_examples += 1
 
     total = num_positive_examples + num_negagive_examples
-    if target == 'True':
+    if target == True:
         return num_positive_examples/total
-    elif target == 'False':
+    elif target == False:
         return num_negagive_examples/total
 
 
 def entropy(examples):
-    pos_probability = probability(examples, 'True')
-    neg_probability = probability(examples, 'False')
+    pos_probability = probability(examples, True)
+    neg_probability = probability(examples, False)
     if pos_probability == 0 or neg_probability == 0:
         return 0
     else:
@@ -147,22 +149,22 @@ def id3(examples, attributes, branch_value=None):
     # Gather positive and negative probabilities for Base case 1 and
     # future use:
     most_common_value = None
-    pos_probability = probability(examples, 'True')
-    neg_probability = probability(examples, 'False')
+    pos_probability = probability(examples, True)
+    neg_probability = probability(examples, False)
     # (we bias to positive when split 50/50)
     if pos_probability >= neg_probability:
-        most_common_value = 'True'
+        most_common_value = True
     else:
-        most_common_value = 'False'
+        most_common_value = False
 
     # Base case 1:
     # If all examples are either positive or negative then assign that value to
     # the label
     if pos_probability == 1.0:
-        root.label = 'True'  # Positive
+        root.label = True  # Positive
         return root
     if neg_probability == 1.0:
-        root.label = 'False'  # Negative
+        root.label = False  # Negative
         return root
 
     # Base case 2:
@@ -198,60 +200,78 @@ def id3(examples, attributes, branch_value=None):
 
 def predict(tree, example):
     if len(tree.children) == 0:
-        # print(tree.branch_value)
         return tree.label
     else:
-        print(tree.decision_attribute)
         for child in tree.children:
             if example.attributes[tree.decision_attribute] == child.branch_value:
-                print('here')
                 return predict(child, example)
 
 
-def tupleslist_to_dict(tl):
-    d = {}
-    for t in tl:
-        d[t[0]] = t[1]
-    return d
-
-
-class Example():
-    def __init__(self, attribute_dict, class_value):
-        self.attributes = attribute_dict
-        self.class_value = class_value
-
-
-def create_examples_list(example_tuples, attribute_tuples):
-    examples = []
-    for e in example_tuples:
-        d = {}
-        for j, a in enumerate(attribute_tuples):
-            d[a[0]] = e[j]
-        value = d.pop('Class')
-        examples.append(Example(d, value))
-
-    return examples
-
-
 def main():
-    # Pre-processing
-    with open('training_subsetD_tiny.arff') as f:
-        training_data = arff.load(f)
-    examples = create_examples_list(training_data['data'], training_data['attributes'])
-    attributes = tupleslist_to_dict(training_data['attributes'])
-    # Remove the target concept from the attributes dict
-    attributes.pop('Class')
+    n = 21
+    examples = []
+    examples.append(TennisExample('sunny', 'hot', 'high', 'weak',int(random()*n), 1, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'strong',int(random()*n), 2, False))
+    examples.append(TennisExample('overcast', 'hot', 'high', 'weak',int(random()*n), 2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('overcast', 'cool', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('sunny', 'mild', 'high', 'weak', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('sunny', 'mild', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('overcast', 'mild', 'high', 'strong', int(random()*n),2, True))
+    examples.append(TennisExample('overcast', 'hot', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'weak',int(random()*n), 1, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'strong',int(random()*n), 2, False))
+    examples.append(TennisExample('overcast', 'hot', 'high', 'weak',int(random()*n), 2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('overcast', 'cool', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('sunny', 'mild', 'high', 'weak', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('sunny', 'mild', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('overcast', 'mild', 'high', 'strong', int(random()*n),2, True))
+    examples.append(TennisExample('overcast', 'hot', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'weak',int(random()*n), 1, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'strong',int(random()*n), 2, False))
+    examples.append(TennisExample('overcast', 'hot', 'high', 'weak',int(random()*n), 2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('overcast', 'cool', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('sunny', 'mild', 'high', 'weak', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('sunny', 'mild', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('overcast', 'mild', 'high', 'strong', int(random()*n),2, True))
+    examples.append(TennisExample('overcast', 'hot', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'strong', int(random()*n),2, False))
+
+
+    attributes = {
+        'outlook': ['sunny', 'overcast', 'rain'],
+        'temperature': ['hot', 'mild', 'cool'],
+        'humidity': ['high', 'normal'],
+        'wind': ['weak', 'strong'],
+        'id': list(range(n)),
+        'region': [1,2]
+    }
+
+    # examples = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14]
 
     t = id3(examples, attributes)
     if t: t.pretty_print()
 
-    print(examples[0].class_value)
+    for e in examples:
+        print(predict(t, e))
 
-    print(predict(t, examples[0]))
-
-    # for e in examples:
-    #     print(predict(t, e))
-
+    print([int(random()*n) for x in range(n)])
 
     # print(information_gain(examples, attributes, 'wind'))
     # print(entropy_by_numbers(9,5))
