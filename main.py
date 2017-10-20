@@ -1,26 +1,20 @@
 # ID3 algorithm for learning a decision tree for a target concept
 import copy
+from random import random
 from math import log2
 
 
 class TennisExample():
-    def __init__(self, outlook, temperature, humidity, wind, id, play_tennis):
+    def __init__(self, outlook, temperature, humidity, wind, id, region, play_tennis):
         self.attributes = {
             'outlook': outlook,
             'temperature': temperature,
             'humidity': humidity,
             'wind': wind,
-            'id': id
+            'id': id,
+            'region': region
         }
         self.target_concept = play_tennis
-
-
-class AttributeMap():
-    def __init__(self, values_map):
-        self.possible_values = values_map
-
-    def remove(self, attribute):
-        self.possible_values.pop(attribute, None)
 
 
 class DecisionTreeNode():
@@ -41,16 +35,6 @@ class DecisionTreeNode():
             for i, child in enumerate(self.children):
                 print("Branch", i, ":")
                 child.pretty_print()
-
-
-# def entropy_by_numbers(pos_examples, neg_examples):
-#     pos_probability = pos_examples/(pos_examples+neg_examples)
-#     neg_probability = neg_examples/(pos_examples+neg_examples)
-#     if pos_probability == 0 or neg_probability == 0:
-#         return 0
-#     else:
-#         return (-pos_probability*log2(pos_probability)
-#                 - neg_probability*log2(neg_probability))
 
 
 def probability(examples, target):
@@ -101,23 +85,41 @@ def split_information(examples, attributes, attribute):
     for subset in subsets:
         if len(subset[1]) != 0:
             sum += len(subset[1])/len(examples) * log2(len(subset[1])/len(examples))
+    if sum == 0:
+        raise Exception(
+            "Split info was zero (no examples matched attribute). Attribute: {0}, Allowed values: {1}, Actual value from ex0: {2}".format(
+                attribute, attributes[attribute], examples[0].attributes[attribute]))
+
     return -sum
 
 
-def calculate_gain_ratio(examples, attributes, attribute):
-    split_val = split_information(examples, attributes, attribute)
-    if split_val == 0:
-        split_val = 0.01
-    return information_gain(examples, attributes, attribute) / split_val
-
-
 def choose_best_attribute(examples, attributes):
-    attribute_gainratios = []
+    # Find the average Information Gain of all the attributes
+    gains = []
     for a in attributes:
-        gain_ratio = calculate_gain_ratio(examples, attributes, a)
-        attribute_gainratios.append((gain_ratio, a))
+        gains.append((information_gain(examples, attributes, a), a))
+    avg_gain = sum([x[0] for x in gains])/float(len(gains))
+
+    # Only consider those with above average gains and apply Split Information
+    gain_ratios = []
+    for g in gains:
+        if g[0] >= avg_gain:
+            try:
+                split_val = split_information(examples, attributes, g[1])
+                gain_ratio = g[0] / split_val
+                gain_ratios.append((gain_ratio, g[1]))
+            except Exception as e:
+                print("Mismatch between attribute and expected values. Continuing with remaining attributes.")
+                print(e)
+
+    if len(gain_ratios) == 0:
+        raise Exception("None of attributes met criteria:", avg_gain, sorted(gains, reverse=True))
+
+    # print(avg_gain, sorted(gains, reverse=True))
+    # print(gain_ratios)
+
     # The attribute with best gain ratio:
-    return max(attribute_gainratios)[1]
+    return max(gain_ratios)[1]
 
 
 # Divide the examples into subsets that correspond the each of the possible
@@ -202,30 +204,62 @@ def predict(tree, example):
 
 
 def main():
-    d1 = TennisExample('sunny', 'hot', 'high', 'weak', 1, False)
-    d2 = TennisExample('sunny', 'hot', 'high', 'strong', 2, False)
-    d3 = TennisExample('overcast', 'hot', 'high', 'weak', 3, True)
-    d4 = TennisExample('rain', 'mild', 'high', 'weak', 4, True)
-    d5 = TennisExample('rain', 'cool', 'normal', 'weak', 5, True)
-    d6 = TennisExample('rain', 'cool', 'normal', 'strong', 6, False)
-    d7 = TennisExample('overcast', 'cool', 'normal', 'strong', 7, True)
-    d8 = TennisExample('sunny', 'mild', 'high', 'weak', 1, False)
-    d9 = TennisExample('sunny', 'cool', 'normal', 'weak', 2, True)
-    d10 = TennisExample('rain', 'mild', 'normal', 'weak', 3, True)
-    d11 = TennisExample('sunny', 'mild', 'normal', 'strong', 4, True)
-    d12 = TennisExample('overcast', 'mild', 'high', 'strong', 5, True)
-    d13 = TennisExample('overcast', 'hot', 'normal', 'weak', 6, True)
-    d14 = TennisExample('rain', 'mild', 'high', 'strong', 7, False)
+    n = 21
+    examples = []
+    examples.append(TennisExample('sunny', 'hot', 'high', 'weak',int(random()*n), 1, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'strong',int(random()*n), 2, False))
+    examples.append(TennisExample('overcast', 'hot', 'high', 'weak',int(random()*n), 2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('overcast', 'cool', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('sunny', 'mild', 'high', 'weak', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('sunny', 'mild', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('overcast', 'mild', 'high', 'strong', int(random()*n),2, True))
+    examples.append(TennisExample('overcast', 'hot', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'weak',int(random()*n), 1, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'strong',int(random()*n), 2, False))
+    examples.append(TennisExample('overcast', 'hot', 'high', 'weak',int(random()*n), 2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('overcast', 'cool', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('sunny', 'mild', 'high', 'weak', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('sunny', 'mild', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('overcast', 'mild', 'high', 'strong', int(random()*n),2, True))
+    examples.append(TennisExample('overcast', 'hot', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'weak',int(random()*n), 1, False))
+    examples.append(TennisExample('sunny', 'hot', 'high', 'strong',int(random()*n), 2, False))
+    examples.append(TennisExample('overcast', 'hot', 'high', 'weak',int(random()*n), 2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'cool', 'normal', 'strong', int(random()*n),2, False))
+    examples.append(TennisExample('overcast', 'cool', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('sunny', 'mild', 'high', 'weak', int(random()*n),2, False))
+    examples.append(TennisExample('sunny', 'cool', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('sunny', 'mild', 'normal', 'strong',int(random()*n), 2, True))
+    examples.append(TennisExample('overcast', 'mild', 'high', 'strong', int(random()*n),2, True))
+    examples.append(TennisExample('overcast', 'hot', 'normal', 'weak', int(random()*n),2, True))
+    examples.append(TennisExample('rain', 'mild', 'high', 'strong', int(random()*n),2, False))
+
 
     attributes = {
         'outlook': ['sunny', 'overcast', 'rain'],
         'temperature': ['hot', 'mild', 'cool'],
         'humidity': ['high', 'normal'],
         'wind': ['weak', 'strong'],
-        'id': [1,2,3,4,5,6,7]
+        'id': list(range(n)),
+        'region': [1,2]
     }
 
-    examples = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14]
+    # examples = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14]
 
     t = id3(examples, attributes)
     if t: t.pretty_print()
@@ -233,11 +267,13 @@ def main():
     for e in examples:
         print(predict(t, e))
 
+    print([int(random()*n) for x in range(n)])
+
     # print(information_gain(examples, attributes, 'wind'))
     # print(entropy_by_numbers(9,5))
     # print(entropy(examples))
-    print(split_information(examples, attributes, 'id'))
-    print(split_information(examples, attributes, 'wind'))
+    # print(split_information(examples, attributes, 'id'))
+    # print(split_information(examples, attributes, 'wind'))
 
 
 
