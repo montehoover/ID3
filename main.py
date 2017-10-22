@@ -1,139 +1,33 @@
 # ID3 algorithm for learning a decision tree for a target concept
+import arff
 import copy
 from math import log2
-from random import random
-
-import arff
 
 
-class TennisExample():
-    def __init__(self, outlook, temperature, humidity, wind, id, region, play_tennis):
-        self.attributes = {
-            'outlook': outlook,
-            'temperature': temperature,
-            'humidity': humidity,
-            'wind': wind,
-            'id': id,
-            'region': region
-        }
-        self.class_value = play_tennis
+def main():
+    # Pre-processing
+    with open('training_subsetD_small.arff') as f:
+        training_data = arff.load(f)
+    examples = create_examples_list(training_data['data'], training_data['attributes'])
+    attributes = tupleslist_to_dict(training_data['attributes'])
+    # Remove the target concept from the attributes dict
+    attributes.pop('Class')
+
+    # Learn the tree
+    t = id3(examples, attributes)
+    if t: t.pretty_print()
 
 
-class DecisionTreeNode():
-    def __init__(self, branch_value_from_parent):
-        self.branch_value = branch_value_from_parent
-        self.decision_attribute = None
-        self.label = None
-        self.children = []
+    # for e in examples:
+    print()
+    print(examples[0].class_value)
+    print(predict(t, examples[0]))
 
-    def pretty_print(self):
-        print('|')
-        print(self.branch_value)
-        print('|')
-        if len(self.children) == 0:
-            print('#', self.label, '#')
-        else:
-            print('*', self.decision_attribute, '*')
-            for i, child in enumerate(self.children):
-                print("Branch", i, ":")
-                child.pretty_print()
-
-
-def probability(examples, target):
-    if examples == None or len(examples) == 0:
-        raise Exception("Error: Invalid argument for <examples>:", examples)
-
-    num_positive_examples = 0
-    num_negagive_examples = 0
-    for e in examples:
-        if e.class_value == 'True':
-            num_positive_examples += 1
-        else:
-            num_negagive_examples += 1
-
-    total = num_positive_examples + num_negagive_examples
-    if target == 'True':
-        return num_positive_examples/total
-    elif target == 'False':
-        return num_negagive_examples/total
-
-
-def entropy(examples):
-    pos_probability = probability(examples, 'True')
-    neg_probability = probability(examples, 'False')
-    if pos_probability == 0 or neg_probability == 0:
-        return 0
-    else:
-        return (-pos_probability*log2(pos_probability)
-                - neg_probability*log2(neg_probability))
-
-
-def information_gain(examples, attributes, attribute):
-    subsets = split_by_attribute(examples, attributes, attribute)
-
-    new_entropy = 0
-    # Each subset is represented by a tuple where we just care about the second
-    # term (the actual list)
-    for subset in subsets:
-        if len(subset[1]) != 0:
-            new_entropy += len(subset[1])/len(examples) * entropy(subset[1])
-
-    return entropy(examples) - new_entropy
-
-
-def split_information(examples, attributes, attribute):
-    subsets = split_by_attribute(examples, attributes, attribute)
-    sum = 0
-    for subset in subsets:
-        if len(subset[1]) != 0:
-            sum += len(subset[1])/len(examples) * log2(len(subset[1])/len(examples))
-    if sum == 0:
-        raise Exception(
-            "Split info was zero (no examples matched attribute). Attribute: {0}, Allowed values: {1}, Actual value from ex0: {2}".format(
-                attribute, attributes[attribute], examples[0].attributes[attribute]))
-
-    return -sum
-
-
-def choose_best_attribute(examples, attributes):
-    # Find the average Information Gain of all the attributes
-    gains = []
-    for a in attributes:
-        gains.append((information_gain(examples, attributes, a), a))
-    avg_gain = sum([x[0] for x in gains])/float(len(gains))
-
-    # Only consider those with above average gains and apply Split Information
-    gain_ratios = []
-    for g in gains:
-        if g[0] >= avg_gain:
-            try:
-                split_val = split_information(examples, attributes, g[1])
-                gain_ratio = g[0] / split_val
-                gain_ratios.append((gain_ratio, g[1]))
-            except Exception as e:
-                print("Mismatch between attribute and expected values. Continuing with remaining attributes.")
-                print(e)
-
-    if len(gain_ratios) == 0:
-        raise Exception("None of attributes met criteria:", avg_gain, sorted(gains, reverse=True))
-
-    # print(avg_gain, sorted(gains, reverse=True))
-    # print(gain_ratios)
-
-    # The attribute with best gain ratio:
-    return max(gain_ratios)[1]
-
-
-# Divide the examples into subsets that correspond the each of the possible
-# values for the decision_attribute.
-# We return a list of subsets (one for each possible value), where each
-# subset is represented by a two-item tuple. The first item is the value,
-# and the second item is the list of examples that correspond to that
-# value.
-def split_by_attribute(examples, attributes, decision_attribute):
-    return [(value, [e for e in examples
-                     if e.attributes[decision_attribute] == value])
-            for value in attributes[decision_attribute]]
+    # print(information_gain(examples, attributes, 'wind'))
+    # print(entropy_by_numbers(9,5))
+    # print(entropy(examples))
+    # print(split_information(examples, attributes, 'id'))
+    # print(split_information(examples, attributes, 'wind'))
 
 
 def id3(examples, attributes, branch_value=None):
@@ -196,29 +90,134 @@ def id3(examples, attributes, branch_value=None):
     return root
 
 
+def choose_best_attribute(examples, attributes):
+    # Find the average Information Gain of all the attributes
+    gains = []
+    for a in attributes:
+        gains.append((information_gain(examples, attributes, a), a))
+    avg_gain = sum([x[0] for x in gains])/float(len(gains))
+
+    # Only consider those with above average gains and apply Split Information
+    gain_ratios = []
+    for g in gains:
+        if g[0] >= avg_gain:
+            try:
+                split_val = split_information(examples, attributes, g[1])
+                gain_ratio = g[0] / split_val
+                gain_ratios.append((gain_ratio, g[1]))
+            except Exception as e:
+                print("Mismatch between attribute and expected values. Continuing with remaining attributes.")
+                print(e)
+
+    if len(gain_ratios) == 0:
+        raise Exception("None of attributes met criteria:", avg_gain, sorted(gains, reverse=True))
+
+    # print(avg_gain, sorted(gains, reverse=True))
+    # print(gain_ratios)
+
+    # The attribute with best gain ratio:
+    return max(gain_ratios)[1]
+
+
+def information_gain(examples, attributes, attribute):
+    subsets = split_by_attribute(examples, attributes, attribute)
+
+    new_entropy = 0
+    # Each subset is represented by a tuple where we just care about the second
+    # term (the actual list)
+    for subset in subsets:
+        if len(subset[1]) != 0:
+            new_entropy += len(subset[1])/len(examples) * entropy(subset[1])
+
+    return entropy(examples) - new_entropy
+
+
+def split_information(examples, attributes, attribute):
+    subsets = split_by_attribute(examples, attributes, attribute)
+    sum = 0
+    for subset in subsets:
+        if len(subset[1]) != 0:
+            sum += len(subset[1])/len(examples) * log2(len(subset[1])/len(examples))
+    if sum == 0:
+        raise Exception(
+            "Split info was zero (no examples matched attribute). Attribute: {0}, Allowed values: {1}, Actual value from ex0: {2}".format(
+                attribute, attributes[attribute], examples[0].attributes[attribute]))
+    return -sum
+
+
+def entropy(examples):
+    pos_probability = probability(examples, 'True')
+    neg_probability = probability(examples, 'False')
+    if pos_probability == 0 or neg_probability == 0:
+        return 0
+    else:
+        return (-pos_probability*log2(pos_probability)
+                - neg_probability*log2(neg_probability))
+
+
+def probability(examples, target):
+    if examples == None or len(examples) == 0:
+        raise Exception("Error: Invalid argument for <examples>:", examples)
+
+    num_positive_examples = 0
+    num_negagive_examples = 0
+    for e in examples:
+        if e.class_value == 'True':
+            num_positive_examples += 1
+        else:
+            num_negagive_examples += 1
+
+    total = num_positive_examples + num_negagive_examples
+    if target == 'True':
+        return num_positive_examples/total
+    elif target == 'False':
+        return num_negagive_examples/total
+
+
+# Divide the examples into subsets that correspond the each of the possible
+# values for the decision_attribute.
+# We return a list of subsets (one for each possible value), where each
+# subset is represented by a two-item tuple. The first item is the value,
+# and the second item is the list of examples that correspond to that
+# value.
+def split_by_attribute(examples, attributes, decision_attribute):
+    subsets = []
+    for value in attributes[decision_attribute]:
+        examples_subset = []
+        for e in examples:
+            if e.attributes[decision_attribute] == None:
+                e.attributes[decision_attribute] = most_common_value(examples, attributes, decision_attribute, e.class_value)
+            if e.attributes[decision_attribute] == value:
+                examples_subset.append(e)
+        subsets.append((value, examples_subset))
+
+    return subsets
+
+
+def most_common_value(examples, attributes, decision_attribute, class_value):
+    d = {}
+    for value in attributes[decision_attribute]:
+        d[value] = 0
+    for e in examples:
+        if e.class_value == class_value and e.attributes[decision_attribute] != None:
+            d[e.attributes[decision_attribute]] += 1
+
+    return max(d.items(), key = lambda x: x[1])[0]
+
+
 def predict(tree, example):
     if len(tree.children) == 0:
-        # print(tree.branch_value)
+        print(tree.branch_value)
         return tree.label
     else:
-        print(tree.decision_attribute)
+        print(tree.branch_value, tree.decision_attribute)
         for child in tree.children:
             if example.attributes[tree.decision_attribute] == child.branch_value:
-                print('here')
+                print(child.branch_value)
                 return predict(child, example)
-
-
-def tupleslist_to_dict(tl):
-    d = {}
-    for t in tl:
-        d[t[0]] = t[1]
-    return d
-
-
-class Example():
-    def __init__(self, attribute_dict, class_value):
-        self.attributes = attribute_dict
-        self.class_value = class_value
+        raise Exception("example value did match any valid attribute values",
+                        example.attributes[tree.decision_attribute],
+                        [x.branch_value for x in tree.children])
 
 
 def create_examples_list(example_tuples, attribute_tuples):
@@ -233,32 +232,37 @@ def create_examples_list(example_tuples, attribute_tuples):
     return examples
 
 
-def main():
-    # Pre-processing
-    with open('training_subsetD_tiny.arff') as f:
-        training_data = arff.load(f)
-    examples = create_examples_list(training_data['data'], training_data['attributes'])
-    attributes = tupleslist_to_dict(training_data['attributes'])
-    # Remove the target concept from the attributes dict
-    attributes.pop('Class')
-
-    t = id3(examples, attributes)
-    if t: t.pretty_print()
-
-    print(examples[0].class_value)
-
-    print(predict(t, examples[0]))
-
-    # for e in examples:
-    #     print(predict(t, e))
+def tupleslist_to_dict(tl):
+    d = {}
+    for t in tl:
+        d[t[0]] = t[1]
+    return d
 
 
-    # print(information_gain(examples, attributes, 'wind'))
-    # print(entropy_by_numbers(9,5))
-    # print(entropy(examples))
-    # print(split_information(examples, attributes, 'id'))
-    # print(split_information(examples, attributes, 'wind'))
+class DecisionTreeNode():
+        def __init__(self, branch_value_from_parent):
+            self.branch_value = branch_value_from_parent
+            self.decision_attribute = None
+            self.label = None
+            self.children = []
 
+        def pretty_print(self):
+            print('|')
+            print(self.branch_value)
+            print('|')
+            if len(self.children) == 0:
+                print('#', self.label, '#')
+            else:
+                print('*', self.decision_attribute, '*')
+                for i, child in enumerate(self.children):
+                    print("Branch", i, ":")
+                    child.pretty_print()
+
+
+class Example():
+    def __init__(self, attribute_dict, class_value):
+        self.attributes = attribute_dict
+        self.class_value = class_value
 
 
 if __name__ == '__main__':
