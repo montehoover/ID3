@@ -1,4 +1,6 @@
 # ID3 algorithm for learning a decision tree for a target concept
+import collections
+
 import arff
 import copy
 from math import log2
@@ -6,28 +8,27 @@ from math import log2
 
 def main():
     # Pre-processing
+    print("Reading file...")
+
     with open('training_subsetD_small.arff') as f:
         training_data = arff.load(f)
+
+    print("Read file complete. Converting data to dicts...")
+
     examples = create_examples_list(training_data['data'], training_data['attributes'])
     attributes = tupleslist_to_dict(training_data['attributes'])
     # Remove the target concept from the attributes dict
     attributes.pop('Class')
 
+    print("Converting data complete. Building the tree.")
+    print(len(examples), "examples to start...")
+
     # Learn the tree
     t = id3(examples, attributes)
     if t: t.pretty_print()
 
+    #run tests
 
-    # for e in examples:
-    print()
-    print(examples[0].class_value)
-    print(predict(t, examples[0]))
-
-    # print(information_gain(examples, attributes, 'wind'))
-    # print(entropy_by_numbers(9,5))
-    # print(entropy(examples))
-    # print(split_information(examples, attributes, 'id'))
-    # print(split_information(examples, attributes, 'wind'))
 
 
 def id3(examples, attributes, branch_value=None):
@@ -86,6 +87,8 @@ def id3(examples, attributes, branch_value=None):
             root.children[i] = DecisionTreeNode(subset[0])
             root.children[i].label = most_common_value
         else:
+            print(len(subset[0]), "examples to go...")
+
             root.children[i] = id3(subset[1], attributes_copy, subset[0])
 
     return root
@@ -102,14 +105,10 @@ def choose_best_attribute(examples, attributes):
     gain_ratios = []
     for g in gains:
         if g[0] >= avg_gain:
-            # try:
             split_val = split_information(examples, attributes, g[1])
             if split_val != None:
                 gain_ratio = g[0] / split_val
                 gain_ratios.append((gain_ratio, g[1]))
-            # except Exception as e:
-            #     print("Mismatch between attribute and expected values. Continuing with remaining attributes.")
-            #     print(e)
 
     if len(gain_ratios) == 0:
         raise Exception("None of attributes met criteria:", avg_gain, sorted(gains, reverse=True))
@@ -192,20 +191,29 @@ def split_by_attribute(examples, attributes, decision_attribute):
 
 
 def fill_in_unkown_values(examples, attributes, attribute):
+    class_true_val = most_common_value(examples, attributes, attribute, 'True')
+    class_false_val = most_common_value(examples, attributes, attribute, 'False')
     for e in examples:
         if e.attributes[attribute] == None:
-            e.attributes[attribute] = most_common_value(examples, attributes, attribute, e.class_value)
+            if e.class_value == 'True':
+                e.attributes[attribute] = class_true_val
+            else:
+                e.attributes[attribute] = class_false_val
 
 
 def most_common_value(examples, attributes, decision_attribute, class_value):
-    d = {}
-    for value in attributes[decision_attribute]:
-        d[value] = 0
-    for e in examples:
-        if e.class_value == class_value and e.attributes[decision_attribute] != None:
-            d[e.attributes[decision_attribute]] += 1
-
-    return max(d.items(), key = lambda x: x[1])[0]
+    # d = {}
+    # for value in attributes[decision_attribute]:
+    #     d[value] = 0
+    # for e in examples:
+    #     if e.class_value == class_value and e.attributes[decision_attribute] != None:
+    #         d[e.attributes[decision_attribute]] += 1
+    # return max(d.items(), key = lambda x: x[1])[0]
+    top_two = collections.Counter([e.attributes[decision_attribute] for e in [e for e in examples if e.class_value == class_value]]).most_common(2)
+    if top_two[0][0] != None or len(top_two) == 1:
+        return top_two[0][0]
+    else:
+        return top_two[1][0]
 
 
 def predict(tree, example):
