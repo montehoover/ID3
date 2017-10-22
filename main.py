@@ -72,6 +72,7 @@ def id3(examples, attributes, branch_value=None):
     attributes_copy.pop(a, None)
     root.decision_attribute = a
 
+    fill_in_unkown_values(examples, attributes, a)
     new_subsets = split_by_attribute(examples, attributes, a)
     # Each subset is a tuple of decision_value and examples with that decision
     # value
@@ -101,13 +102,14 @@ def choose_best_attribute(examples, attributes):
     gain_ratios = []
     for g in gains:
         if g[0] >= avg_gain:
-            try:
-                split_val = split_information(examples, attributes, g[1])
+            # try:
+            split_val = split_information(examples, attributes, g[1])
+            if split_val != None:
                 gain_ratio = g[0] / split_val
                 gain_ratios.append((gain_ratio, g[1]))
-            except Exception as e:
-                print("Mismatch between attribute and expected values. Continuing with remaining attributes.")
-                print(e)
+            # except Exception as e:
+            #     print("Mismatch between attribute and expected values. Continuing with remaining attributes.")
+            #     print(e)
 
     if len(gain_ratios) == 0:
         raise Exception("None of attributes met criteria:", avg_gain, sorted(gains, reverse=True))
@@ -139,10 +141,13 @@ def split_information(examples, attributes, attribute):
         if len(subset[1]) != 0:
             sum += len(subset[1])/len(examples) * log2(len(subset[1])/len(examples))
     if sum == 0:
-        raise Exception(
-            "Split info was zero (no examples matched attribute). Attribute: {0}, Allowed values: {1}, Actual value from ex0: {2}".format(
-                attribute, attributes[attribute], examples[0].attributes[attribute]))
-    return -sum
+        return None
+    else:
+        return -sum
+        # raise Exception(
+        #     "Split info was zero (no examples matched attribute). Attribute: {0}, Allowed values: {1}, Actual value from ex0: {2}".format(
+        #         attribute, attributes[attribute], examples[0].attributes[attribute]))
+    # return -sum
 
 
 def entropy(examples):
@@ -181,17 +186,15 @@ def probability(examples, target):
 # and the second item is the list of examples that correspond to that
 # value.
 def split_by_attribute(examples, attributes, decision_attribute):
-    subsets = []
-    for value in attributes[decision_attribute]:
-        examples_subset = []
-        for e in examples:
-            if e.attributes[decision_attribute] == None:
-                e.attributes[decision_attribute] = most_common_value(examples, attributes, decision_attribute, e.class_value)
-            if e.attributes[decision_attribute] == value:
-                examples_subset.append(e)
-        subsets.append((value, examples_subset))
+    return [(value, [e for e in examples
+                     if e.attributes[decision_attribute] == value])
+            for value in attributes[decision_attribute]]
 
-    return subsets
+
+def fill_in_unkown_values(examples, attributes, attribute):
+    for e in examples:
+        if e.attributes[attribute] == None:
+            e.attributes[attribute] = most_common_value(examples, attributes, attribute, e.class_value)
 
 
 def most_common_value(examples, attributes, decision_attribute, class_value):
