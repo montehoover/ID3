@@ -8,24 +8,20 @@ def main():
     # Pre-processing
     with open('training_subsetD_small.arff') as f:
         training_data = arff.load(f)
-    # examples = create_examples_list(training_data['data'], training_data['attributes'])
-    # attributes = tupleslist_to_dict(training_data['attributes'])
-
+    examples = create_examples_list(training_data['data'], training_data['attributes'])
+    attributes = tupleslist_to_dict(training_data['attributes'])
     # Remove the target concept from the attributes dict
-    del training_data['attributes'][-1]
-    # attributes.pop('Class')
-
-
+    attributes.pop('Class')
 
     # Learn the tree
-    t = id3(training_data['data'], training_data['attributes'])
+    t = id3(examples, attributes)
     if t: t.pretty_print()
 
 
     # for e in examples:
-    # print()
-    # print(examples[0].class_value)
-    # print(predict(t, examples[0]))
+    print()
+    print(examples[0].class_value)
+    print(predict(t, examples[0]))
 
     # print(information_gain(examples, attributes, 'wind'))
     # print(entropy_by_numbers(9,5))
@@ -98,8 +94,8 @@ def id3(examples, attributes, branch_value=None):
 def choose_best_attribute(examples, attributes):
     # Find the average Information Gain of all the attributes
     gains = []
-    for i in range(len(attributes)):
-        gains.append((information_gain(examples, attributes, i), a))
+    for a in attributes:
+        gains.append((information_gain(examples, attributes, a), a))
     avg_gain = sum([x[0] for x in gains])/float(len(gains))
 
     # Only consider those with above average gains and apply Split Information
@@ -125,8 +121,8 @@ def choose_best_attribute(examples, attributes):
     return max(gain_ratios)[1]
 
 
-def information_gain(examples, attributes, attribute_index):
-    subsets = split_by_attribute(examples, attributes, attribute_index)
+def information_gain(examples, attributes, attribute):
+    subsets = split_by_attribute(examples, attributes, attribute)
 
     new_entropy = 0
     # Each subset is represented by a tuple where we just care about the second
@@ -171,7 +167,7 @@ def probability(examples, target):
     num_positive_examples = 0
     num_negagive_examples = 0
     for e in examples:
-        if e[-1] == 'True':
+        if e.class_value == 'True':
             num_positive_examples += 1
         else:
             num_negagive_examples += 1
@@ -189,10 +185,10 @@ def probability(examples, target):
 # subset is represented by a two-item tuple. The first item is the value,
 # and the second item is the list of examples that correspond to that
 # value.
-def split_by_attribute(examples, attributes, attribute_index):
+def split_by_attribute(examples, attributes, decision_attribute):
     return [(value, [e for e in examples
-                     if e[attribute_index] == value])
-            for value in attributes[attribute_index][1]]
+                     if e.attributes[decision_attribute] == value])
+            for value in attributes[decision_attribute]]
 
 
 def fill_in_unkown_values(examples, attributes, attribute):
