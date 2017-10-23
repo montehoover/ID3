@@ -4,15 +4,25 @@ import collections
 import arff
 import copy
 from math import log2
+from scipy.stats import chi2
 
 import pickle
 
+import time
+
+
+# Globals to be used for statistics:
+POS_EXAMPLES = 0
+NEG_EXAMPLES = 0
+CONFIDENCE = 0
+
 
 def main():
+    start_time = time.time()
     # Pre-processing
     print("Reading file...")
 
-    with open('training_subsetD_small.arff') as f:
+    with open('training_subsetD.arff') as f:
         training_data = arff.load(f)
 
     print("Read file complete. Converting data to dicts...")
@@ -21,6 +31,8 @@ def main():
     attributes = tupleslist_to_dict(training_data['attributes'])
     # Remove the target concept from the attributes dict
     attributes.pop('Class')
+    global POS_EXAMPLES, NEG_EXAMPLES
+    POS_EXAMPLES, NEG_EXAMPLES = get_pos_and_neg_counts(examples)
 
     print("Converting data complete. Building the tree.")
     print(len(examples), "examples to start...")
@@ -28,16 +40,13 @@ def main():
     # Learn the tree
     t = id3(examples, attributes)
     # if t: t.pretty_print()
-
-    with open("id3.pickle", 'wb') as f:
-        pickle.dump(t, f)
-
-    with open('id3.pickle', 'rb') as f:
-        t2 = pickle.load(f)
+    train_end_time = time.time()
+    print("Finished building tree in {} seconds".format(train_end_time - start_time))
 
 
-    #run tests
-    with open('testingD_small.arff') as f:
+
+    # run tests
+    with open('testingD.arff') as f:
         test_data = arff.load(f)
     test_examples = create_examples_list(test_data['data'], test_data['attributes'])
     num_correct = 0
@@ -48,20 +57,13 @@ def main():
         else:
             num_incorrect += 1
     percent_correct = num_correct / (num_correct + num_incorrect)
+    print("Correct:", num_correct)
+    print("Incorrect:", num_incorrect)
     print(percent_correct)
 
-    with open('testingD_small.arff') as f:
-        test_data = arff.load(f)
-    test_examples = create_examples_list(test_data['data'], test_data['attributes'])
-    num_correct = 0
-    num_incorrect = 0
-    for e in test_examples:
-        if predict(t2, e) == e.class_value:
-            num_correct += 1
-        else:
-            num_incorrect += 1
-    percent_correct = num_correct / (num_correct + num_incorrect)
-    print(percent_correct)
+
+    test_end_time = time.time()
+    print("Finished everything in {} seconds".format(test_end_time - start_time))
 
 
 def id3(examples, attributes, branch_value=None):
@@ -100,10 +102,20 @@ def id3(examples, attributes, branch_value=None):
         root.label = most_common_value
         return root
 
+
+    # Base case 3:
+    # If no attributes pass the chi2 test for significance, then best_attribute will
+    # be None. If so, stop splitting and create leaf node with most_common as label
+    a = choose_best_attribute(examples, attributes)
+    if a == None:
+        root.label = most_common_value
+        return root
+
+    ####################
     # Recursive case:
     ####################
-    # Choose attribute with which to split the data
-    a = choose_best_attribute(examples, attributes)
+
+    # We want to continue growing the tree. Use returned best_attribute (a) to split.
     attributes_copy = copy.deepcopy(attributes)
     attributes_copy.pop(a, None)
     root.decision_attribute = a
@@ -156,7 +168,12 @@ def choose_best_attribute(examples, attributes):
         raise Exception("None of attributes met criteria:", avg_gain, sorted(gains, reverse=True))
 
     # The attribute with best gain ratio:
-    return max(gain_ratios)[1]
+    gain_ratios.sort(reverse=True)
+    for val, attribute in gain_ratios:
+        if is_statistically_significant(examples, attributes, attribute):
+            return attribute
+
+    return None
 
 
 def information_gain(examples, attributes, attribute):
@@ -197,7 +214,15 @@ def entropy(examples):
 def probability(examples, target):
     if examples == None or len(examples) == 0:
         raise Exception("Error: Invalid argument for <examples>:", examples)
+    pos, neg = get_pos_and_neg_counts(examples)
+    total = pos + neg
+    if target == 'True':
+        return pos / total
+    elif target == 'False':
+        return neg / total
 
+
+def get_pos_and_neg_counts(examples):
     num_positive_examples = 0
     num_negagive_examples = 0
     for e in examples:
@@ -205,12 +230,39 @@ def probability(examples, target):
             num_positive_examples += 1
         else:
             num_negagive_examples += 1
+    return num_positive_examples, num_negagive_examples
 
-    total = num_positive_examples + num_negagive_examples
-    if target == 'True':
-        return num_positive_examples/total
-    elif target == 'False':
-        return num_negagive_examples/total
+
+def is_statistically_significant(examples, attributes, attribute):
+    subs = split_by_attribute(examples, attributes, attribute)
+    test = independence_stat([x[1] for x in subs], POS_EXAMPLES, NEG_EXAMPLES)
+    c = chi2.isf(1 - CONFIDENCE, len(subs) - 1)
+    if test > c:
+        return True
+    else:
+        return False
+
+def independence_stat(subsets, p, n):
+    sum = 0
+    for subset in subsets:
+        if len(subset) > 0:
+            pi = 0
+            ni = 0
+            for e in subset:
+                if e.class_value == 'True':
+                    pi += 1
+                else:
+                    ni += 1
+            ppi = pprimei(p, n, pi, ni)
+            npi = nprimei(p, n, pi, ni)
+            sum += (((pi - ppi) ** 2) / ppi) + (((ni - npi) ** 2) / npi)
+    return sum
+
+def pprimei(p, n, pi, ni):
+    return p * (pi + ni) / (p + n)
+
+def nprimei(p, n, pi, ni):
+    return n * (pi + ni) / (p + n)
 
 
 # Divide the examples into subsets that correspond the each of the possible
@@ -241,10 +293,6 @@ def get_most_common(examples, attributes, decision_attribute, class_value):
         return top_two[0][0]
     else:
         return top_two[1][0]
-
-    # if return_val == None:
-    #     print("hey!")
-    # return return_val
 
 
 def predict(tree, example):

@@ -5,6 +5,8 @@ from random import random
 
 import pickle
 
+import scipy
+
 
 class TennisExample():
     def __init__(self, outlook, temperature, humidity, wind, id, region, play_tennis):
@@ -205,6 +207,27 @@ def predict(tree, example):
                 return predict(child, example)
 
 
+def pprimei(p, n, pi, ni):
+    return p*(pi+ni)/(p+n)
+
+def nprimei(p, n, pi, ni):
+    return n*(pi+ni)/(p+n)
+
+def teststat(subsets, p, n):
+    sum = 0
+    for subset in subsets:
+        pi = 0
+        ni = 0
+        for e in subset:
+            if e.target_concept == True:
+                pi += 1
+            else:
+                ni += 1
+        ppi = pprimei(p, n, pi, ni)
+        npi = nprimei(p, n, pi, ni)
+        sum += ((pi - ppi)**2)/ppi + ((ni - npi)**2)/npi
+    return sum
+
 def main():
     n = 1
     examples = []
@@ -222,36 +245,6 @@ def main():
     examples.append(TennisExample('overcast', 'mild', 'high', 'strong', int(random()*n),2, True))
     examples.append(TennisExample('overcast', 'hot', 'normal', 'weak', int(random()*n),2, True))
     examples.append(TennisExample('rain', 'mild', 'high', 'strong', int(random()*n),2, False))
-    # examples.append(TennisExample('sunny', 'hot', 'high', 'weak',int(random()*n), 1, False))
-    # examples.append(TennisExample('sunny', 'hot', 'high', 'strong',int(random()*n), 2, False))
-    # examples.append(TennisExample('overcast', 'hot', 'high', 'weak',int(random()*n), 2, True))
-    # examples.append(TennisExample('rain', 'mild', 'high', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('rain', 'cool', 'normal', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('rain', 'cool', 'normal', 'strong', int(random()*n),2, False))
-    # examples.append(TennisExample('overcast', 'cool', 'normal', 'strong',int(random()*n), 2, True))
-    # examples.append(TennisExample('sunny', 'mild', 'high', 'weak', int(random()*n),2, False))
-    # examples.append(TennisExample('sunny', 'cool', 'normal', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('rain', 'mild', 'normal', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('sunny', 'mild', 'normal', 'strong',int(random()*n), 2, True))
-    # examples.append(TennisExample('overcast', 'mild', 'high', 'strong', int(random()*n),2, True))
-    # examples.append(TennisExample('overcast', 'hot', 'normal', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('rain', 'mild', 'high', 'strong', int(random()*n),2, False))
-    # examples.append(TennisExample('sunny', 'hot', 'high', 'weak',int(random()*n), 1, False))
-    # examples.append(TennisExample('sunny', 'hot', 'high', 'strong',int(random()*n), 2, False))
-    # examples.append(TennisExample('overcast', 'hot', 'high', 'weak',int(random()*n), 2, True))
-    # examples.append(TennisExample('rain', 'mild', 'high', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('rain', 'cool', 'normal', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('rain', 'cool', 'normal', 'strong', int(random()*n),2, False))
-    # examples.append(TennisExample('overcast', 'cool', 'normal', 'strong',int(random()*n), 2, True))
-    # examples.append(TennisExample('sunny', 'mild', 'high', 'weak', int(random()*n),2, False))
-    # examples.append(TennisExample('sunny', 'cool', 'normal', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('rain', 'mild', 'normal', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('sunny', 'mild', 'normal', 'strong',int(random()*n), 2, True))
-    # examples.append(TennisExample('overcast', 'mild', 'high', 'strong', int(random()*n),2, True))
-    # examples.append(TennisExample('overcast', 'hot', 'normal', 'weak', int(random()*n),2, True))
-    # examples.append(TennisExample('rain', 'mild', 'high', 'strong', int(random()*n),2, False))
-
-
     attributes = {
         'outlook': ['sunny', 'overcast', 'rain'],
         'temperature': ['hot', 'mild', 'cool'],
@@ -260,27 +253,29 @@ def main():
         'id': list(range(n)),
         'region': [1,2]
     }
+    from scipy.stats import chi2
 
-    # examples = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14]
 
-    t = id3(examples, attributes)
+
+
+    # t = id3(examples, attributes)
     # if t: t.pretty_print()
 
-    for e in examples:
-        print(predict(t, e))
-
-    print([int(random()*n) for x in range(n)])
-    print()
-
-    with open("tennis.pickle", 'wb') as f:
-        pickle.dump(t, f)
-
-    with open('tennis.pickle', 'rb') as f:
-        t2 = pickle.load(f)
-
-    # print(t == t2)
-    for e in examples:
-        print(predict(t2, e))
+    # for e in examples:
+    #     print(predict(t, e))
+    #
+    # print([int(random()*n) for x in range(n)])
+    # print()
+    #
+    # with open("tennis.pickle", 'wb') as f:
+    #     pickle.dump(t, f)
+    #
+    # with open('tennis.pickle', 'rb') as f:
+    #     t2 = pickle.load(f)
+    #
+    # # print(t == t2)
+    # for e in examples:
+    #     print(predict(t2, e))
 
     # t2.pretty_print()
 
