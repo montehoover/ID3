@@ -5,6 +5,8 @@ import arff
 import copy
 from math import log2
 
+import pickle
+
 
 def main():
     # Pre-processing
@@ -25,10 +27,41 @@ def main():
 
     # Learn the tree
     t = id3(examples, attributes)
-    if t: t.pretty_print()
+    # if t: t.pretty_print()
+
+    with open("id3.pickle", 'wb') as f:
+        pickle.dump(t, f)
+
+    with open('id3.pickle', 'rb') as f:
+        t2 = pickle.load(f)
+
 
     #run tests
+    with open('testingD_small.arff') as f:
+        test_data = arff.load(f)
+    test_examples = create_examples_list(test_data['data'], test_data['attributes'])
+    num_correct = 0
+    num_incorrect = 0
+    for e in test_examples:
+        if predict(t, e) == e.class_value:
+            num_correct += 1
+        else:
+            num_incorrect += 1
+    percent_correct = num_correct / (num_correct + num_incorrect)
+    print(percent_correct)
 
+    with open('testingD_small.arff') as f:
+        test_data = arff.load(f)
+    test_examples = create_examples_list(test_data['data'], test_data['attributes'])
+    num_correct = 0
+    num_incorrect = 0
+    for e in test_examples:
+        if predict(t2, e) == e.class_value:
+            num_correct += 1
+        else:
+            num_incorrect += 1
+    percent_correct = num_correct / (num_correct + num_incorrect)
+    print(percent_correct)
 
 
 def id3(examples, attributes, branch_value=None):
@@ -68,15 +101,24 @@ def id3(examples, attributes, branch_value=None):
         return root
 
     # Recursive case:
+    ####################
+    # Choose attribute with which to split the data
     a = choose_best_attribute(examples, attributes)
     attributes_copy = copy.deepcopy(attributes)
     attributes_copy.pop(a, None)
     root.decision_attribute = a
 
-    fill_in_unkown_values(examples, attributes, a)
-    new_subsets = split_by_attribute(examples, attributes, a)
+    # Store most common value for that attribute among examples at this node
+    val_true = get_most_common(examples, attributes, a, 'True')
+    val_false = get_most_common(examples, attributes, a, 'False')
+    root.most_common_value['True'] = val_true
+    root.most_common_value['False'] = val_false
+    fill_in_unknown_values(examples, a, val_true, val_false)
+
+    # Split the data
     # Each subset is a tuple of decision_value and examples with that decision
     # value
+    new_subsets = split_by_attribute(examples, attributes, a)
     for i, subset in enumerate(new_subsets):
         # Create a placeholder for each new branch
         root.children.append(None)
@@ -113,9 +155,6 @@ def choose_best_attribute(examples, attributes):
     if len(gain_ratios) == 0:
         raise Exception("None of attributes met criteria:", avg_gain, sorted(gains, reverse=True))
 
-    # print(avg_gain, sorted(gains, reverse=True))
-    # print(gain_ratios)
-
     # The attribute with best gain ratio:
     return max(gain_ratios)[1]
 
@@ -143,10 +182,6 @@ def split_information(examples, attributes, attribute):
         return None
     else:
         return -sum
-        # raise Exception(
-        #     "Split info was zero (no examples matched attribute). Attribute: {0}, Allowed values: {1}, Actual value from ex0: {2}".format(
-        #         attribute, attributes[attribute], examples[0].attributes[attribute]))
-    # return -sum
 
 
 def entropy(examples):
@@ -190,9 +225,7 @@ def split_by_attribute(examples, attributes, decision_attribute):
             for value in attributes[decision_attribute]]
 
 
-def fill_in_unkown_values(examples, attributes, attribute):
-    class_true_val = most_common_value(examples, attributes, attribute, 'True')
-    class_false_val = most_common_value(examples, attributes, attribute, 'False')
+def fill_in_unknown_values(examples, attribute, class_true_val, class_false_val):
     for e in examples:
         if e.attributes[attribute] == None:
             if e.class_value == 'True':
@@ -201,34 +234,37 @@ def fill_in_unkown_values(examples, attributes, attribute):
                 e.attributes[attribute] = class_false_val
 
 
-def most_common_value(examples, attributes, decision_attribute, class_value):
-    # d = {}
-    # for value in attributes[decision_attribute]:
-    #     d[value] = 0
-    # for e in examples:
-    #     if e.class_value == class_value and e.attributes[decision_attribute] != None:
-    #         d[e.attributes[decision_attribute]] += 1
-    # return max(d.items(), key = lambda x: x[1])[0]
+def get_most_common(examples, attributes, decision_attribute, class_value):
     top_two = collections.Counter([e.attributes[decision_attribute] for e in [e for e in examples if e.class_value == class_value]]).most_common(2)
+
     if top_two[0][0] != None or len(top_two) == 1:
         return top_two[0][0]
     else:
         return top_two[1][0]
 
+    # if return_val == None:
+    #     print("hey!")
+    # return return_val
+
 
 def predict(tree, example):
     if len(tree.children) == 0:
-        print(tree.branch_value)
+        # print(tree.branch_value)
         return tree.label
     else:
-        print(tree.branch_value, tree.decision_attribute)
+        # print(tree.branch_value, tree.decision_attribute)
+        if example.attributes[tree.decision_attribute] == None:
+            example.attributes[tree.decision_attribute] = tree.most_common_value[example.class_value]
         for child in tree.children:
             if example.attributes[tree.decision_attribute] == child.branch_value:
-                print(child.branch_value)
+                # print(child.branch_value)
                 return predict(child, example)
-        raise Exception("example value did match any valid attribute values",
-                        example.attributes[tree.decision_attribute],
-                        [x.branch_value for x in tree.children])
+
+        # We get here if all the values were unknown during training, so we're just going random:
+        return predict(tree.children[0], example)
+        # raise Exception("example value did match any valid attribute values",
+        #                 example.attributes[tree.decision_attribute],
+        #                 [x.branch_value for x in tree.children])
 
 
 def create_examples_list(example_tuples, attribute_tuples):
@@ -256,6 +292,7 @@ class DecisionTreeNode():
             self.decision_attribute = None
             self.label = None
             self.children = []
+            self.most_common_value = {}
 
         def pretty_print(self):
             print('|')
